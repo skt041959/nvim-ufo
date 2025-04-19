@@ -11,8 +11,10 @@ local highlight = require('ufo.highlight')
 local preview = require('ufo.preview')
 local disposable = require('ufo.lib.disposable')
 local bufmanager = require('ufo.bufmanager')
+local contextwin = require('ufo.contextwin') -- Require the new module
 
 local enabled
+local namespace_id -- Store the namespace ID
 
 ---@type UfoDisposable[]
 local disposables = {}
@@ -80,23 +82,33 @@ local function createCommand()
         com! UfoDetach lua require('ufo').detach()
         com! UfoEnableFold lua require('ufo').enableFold()
         com! UfoDisableFold lua require('ufo').disableFold()
+        com! UfoShowContext lua require('ufo').showFoldContext()
     ]])
+end
+
+function M.getNamespaceId() -- Helper to expose NS id
+    return namespace_id
 end
 
 function M.enable()
     if enabled then
         return false
     end
-    local ns = api.nvim_create_namespace('ufo')
+    namespace_id = api.nvim_create_namespace('ufo') -- Store the ID
     createCommand()
     disposables = {}
     table.insert(disposables, createEvents())
     table.insert(disposables, highlight:initialize())
     table.insert(disposables, provider:initialize())
-    table.insert(disposables, decorator:initialize(ns))
-    table.insert(disposables, fold:initialize(ns))
-    table.insert(disposables, preview:initialize(ns))
+    table.insert(disposables, decorator:initialize(namespace_id))
+    table.insert(disposables, fold:initialize(namespace_id))
+    table.insert(disposables, preview:initialize(namespace_id))
     table.insert(disposables, bufmanager:initialize())
+
+    -- Initialize context window manager (passing config if available)
+    local cfg = require('ufo.config').context_window
+    table.insert(disposables, contextwin.get_instance(namespace_id, cfg)) -- Add its dispose method
+
     enabled = true
     return true
 end
@@ -106,7 +118,9 @@ function M.disable()
         return false
     end
     disposable.disposeAll(disposables)
+    disposables = {} -- Clear the list
     enabled = false
+    namespace_id = nil
     return true
 end
 

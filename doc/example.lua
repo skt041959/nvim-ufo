@@ -183,4 +183,21 @@ local function inspectVirtTextForFoldedLines()
     })
 end
 
+
 ---------------------------------------setFoldVirtTextHandler---------------------------------------
+------------------------------------------showFoldContext-------------------------------------------
+local function showFoldContext()
+    require('ufo').setup( {
+        context_window = {
+            border = 'rounded',
+            winhighlight = 'Normal:Pmenu', -- Use Pmenu background
+            winblend = 10,
+            max_lines = 7,
+            max_height = 15,
+        }
+    })
+
+    vim.keymap.set('n', 'zp', require('ufo').showContextAboveCursor,
+    { desc = "UFO: Show Context Above" })
+end
+

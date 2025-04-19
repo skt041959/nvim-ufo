@@ -141,12 +141,21 @@ function M.applyFolds(bufnr, ranges)
     return require('ufo.fold').apply(bufnr, ranges, true)
 end
 
+local contextwin -- Defer require
+
 ---Setup configuration and enable ufo
 ---@param opts? UfoConfig
 function M.setup(opts)
     opts = opts or {}
     M._config = opts
-    M.enable()
+
+    local main_enabled = M.enable()
+    -- Optional: Pre-initialize contextwin if config exists
+    if main_enabled and M._config.context_window then
+         contextwin = require('ufo.contextwin')
+         local main = require('ufo.main')
+         contextwin.get_instance(main.getNamespaceId(), M._config.context_window)
+    end
 end
 
 ---------------------------------------setFoldVirtTextHandler---------------------------------------
@@ -195,5 +204,45 @@ end
 
 ---@diagnostic disable: undefined-doc-param
 ---------------------------------------setFoldVirtTextHandler---------------------------------------
+
+--- Shows context fold lines above the cursor in a floating window.
+function M.showContextAboveCursor()
+    if not M.hasAttached() then
+        vim.notify("UFO: Buffer not attached.", vim.log.levels.WARN)
+        return
+    end
+    contextwin = contextwin or require('ufo.contextwin')
+    local main = require('ufo.main') -- To get config/namespace if needed later
+    local current_win = api.nvim_get_current_win()
+    local current_buf = api.nvim_get_current_buf()
+    local fb = require('ufo.fold').get(current_buf)
+    if not fb then
+        vim.notify("UFO: FoldBuffer not found.", vim.log.levels.WARN)
+        return
+    end
+
+    local cursor_pos = api.nvim_win_get_cursor(current_win)
+    local cursor_lnum = cursor_pos[1]
+
+    -- Ensure contextwin is initialized (might need refactoring if ns/config change)
+    local cfg = require('ufo.config').context_window -- Assuming config structure
+    local cw = contextwin.get_instance(main.getNamespaceId(), cfg) -- Need main to expose ns id
+
+    local linesInfo = cw:_findContextLines(fb, cursor_lnum)
+
+    if linesInfo and #linesInfo > 0 then
+        cw:open(current_win, linesInfo)
+    else
+        cw:close() -- Close if no context found or cursor not in fold
+        -- Optional: vim.notify("UFO: No fold context found at cursor.", vim.log.levels.INFO)
+    end
+end
+
+--- Closes the context window if it's open.
+function M.closeContextAboveCursor()
+   contextwin = contextwin or require('ufo.contextwin')
+   local cw = contextwin.get_instance() -- Get existing instance
+   cw:close()
+end
 
 return M

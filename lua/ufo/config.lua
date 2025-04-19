@@ -1,5 +1,14 @@
 local utils = require('ufo.utils')
 
+---@class UfoContextWindowConfig
+---@field border? string|string[] Border style (e.g., 'single', 'rounded', or custom array)
+---@field winblend? number Window transparency (0-100)
+---@field winhighlight? string Highlighting for the window background (e.g., "Normal:MyContextBg")
+---@field max_lines? number Maximum number of context lines to show
+---@field max_height? number Maximum height of the floating window
+---@field zindex? number Stacking order
+---@field show_inlay_hints? boolean Whether to attempt showing inlay hints (default false)
+
 ---@class UfoConfig
 ---@field provider_selector? function
 ---@field open_fold_hl_timeout? number
@@ -7,6 +16,7 @@ local utils = require('ufo.utils')
 ---@field fold_virt_text_handler? UfoFoldVirtTextHandler A global virtual text handler, reference to `ufo.setFoldVirtTextHandler`
 ---@field enable_get_fold_virt_text? boolean
 ---@field preview? table
+---@field context_window? UfoContextWindowConfig
 local def = {
     open_fold_hl_timeout = 400,
     provider_selector = nil,
@@ -33,6 +43,15 @@ local def = {
             switch = '<Tab>',
             trace = '<CR>'
         }
+    },
+    context_window = { -- Defaults for the new context window
+        border = 'single',
+        winblend = 0,
+        winhighlight = 'Normal:NormalFloat', -- Example: Use NormalFloat background
+        max_lines = 5,
+        max_height = 10,
+        zindex = 100,
+        show_inlay_hints = false,
     }
 }
 
@@ -66,6 +85,17 @@ local function init()
     utils.validate('close_fold_kinds_for_ft', Config.close_fold_kinds_for_ft, 'table')
     utils.validate('fold_virt_text_handler',Config.fold_virt_text_handler, 'function', true)
     utils.validate('preview_mappings',Config.preview.mappings, 'table')
+
+    -- Validation for new context_window options (optional but good practice)
+    if Config.context_window then
+         utils.validate('context_window.border', Config.context_window.border, {'string', 'table'}, true)
+         utils.validate('context_window.winblend', Config.context_window.winblend, 'number', true)
+         utils.validate('context_window.winhighlight', Config.context_window.winhighlight, 'string', true)
+         utils.validate('context_window.max_lines', Config.context_window.max_lines, 'number', true)
+         utils.validate('context_window.max_height', Config.context_window.max_height, 'number', true)
+         utils.validate('context_window.zindex', Config.context_window.zindex, 'number', true)
+         utils.validate('context_window.show_inlay_hints', Config.context_window.show_inlay_hints, 'boolean', true)
+    end
 
     local preview = Config.preview
     for msg, key in pairs(preview.mappings) do
